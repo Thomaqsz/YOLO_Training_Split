@@ -1,4 +1,4 @@
-# splitting_val_train_fixed.py
+# splitting_val_train_fixed_v2.py
 
 from pathlib import Path
 import random
@@ -34,15 +34,17 @@ random.shuffle(image_files)
 train_count = int(len(image_files) * train_pct)
 
 for idx, img_path in enumerate(image_files):
-    label_path = input_labels / (img_path.stem + ".txt")  # expected label file
+    # Find label file that contains image stem
+    matching_labels = list(input_labels.glob(f"{img_path.stem}*.txt"))
+    
     if idx < train_count:
         shutil.copy(img_path, train_images / img_path.name)
-        if label_path.exists():
-            shutil.copy(label_path, train_labels / label_path.name)
+        for label_file in matching_labels:
+            shutil.copy(label_file, train_labels / label_file.name)
     else:
         shutil.copy(img_path, val_images / img_path.name)
-        if label_path.exists():
-            shutil.copy(label_path, val_labels / label_path.name)
+        for label_file in matching_labels:
+            shutil.copy(label_file, val_labels / label_file.name)
 
 print("Train/validation split complete!")
 print(f"Train images: {len(list(train_images.glob('*')))}")
