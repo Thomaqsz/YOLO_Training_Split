@@ -1,42 +1,34 @@
-# --- Colab-ready YOLO Train/Val Split Script ---
+# --- Robust YOLO Train/Val Split Script ---
 from pathlib import Path
 import shutil
 import random
 import os
 
 # ===== CONFIG =====
-DATA_PATH = Path("/content/custom_data")  # path to your dataset folder
-TRAIN_PCT = 0.9                           # ratio of images for training
+DATA_PATH = Path("/content/custom_data")  # path to dataset folder
+TRAIN_PCT = 0.9
 
 IMAGES_PATH = DATA_PATH / "images"
 LABELS_PATH = DATA_PATH / "labels"
 
-# Where to copy the split files
 BASE_PATH = Path("/content/data")
 TRAIN_IMG_PATH = BASE_PATH / "train/images"
 TRAIN_LABEL_PATH = BASE_PATH / "train/labels"
 VAL_IMG_PATH = BASE_PATH / "validation/images"
 VAL_LABEL_PATH = BASE_PATH / "validation/labels"
 
-# ===== CREATE FOLDERS =====
 for folder in [TRAIN_IMG_PATH, TRAIN_LABEL_PATH, VAL_IMG_PATH, VAL_LABEL_PATH]:
     folder.mkdir(parents=True, exist_ok=True)
 
-# ===== RENAME LABEL FILES TO MATCH IMAGE STEM =====
-print("Renaming labels to match images...")
-for lbl in LABELS_PATH.glob("*"):
-    # keep only the part before '.rf.' to match image stem
-    new_name = lbl.stem.split(".rf.")[0] + ".txt"
-    lbl.rename(LABELS_PATH / new_name)
-print("Label renaming complete ✅\n")
+# ===== GET LIST OF LABELS =====
+label_files = {lbl.stem: lbl for lbl in LABELS_PATH.glob("*.txt")}  # dict: stem -> file
+print(f"Found {len(label_files)} label files")
 
 # ===== GET LIST OF IMAGES =====
 image_files = list(IMAGES_PATH.glob("*"))
 random.shuffle(image_files)
 
 train_count = int(len(image_files) * TRAIN_PCT)
-val_count = len(image_files) - train_count
-
 train_files = image_files[:train_count]
 val_files = image_files[train_count:]
 
@@ -44,13 +36,17 @@ val_files = image_files[train_count:]
 def copy_image_and_label(files, img_dest, lbl_dest):
     count = 0
     for img in files:
-        # Copy image
         shutil.copy(img, img_dest / img.name)
 
-        # Construct label filename
-        label_file = LABELS_PATH / (img.stem.split(".rf.")[0] + ".txt")
-        if label_file.exists():
-            shutil.copy(label_file, lbl_dest / label_file.name)
+        # Find matching label
+        matched_label = None
+        for lbl_stem, lbl_path in label_files.items():
+            if img.stem.startswith(lbl_stem):
+                matched_label = lbl_path
+                break
+
+        if matched_label:
+            shutil.copy(matched_label, lbl_dest / matched_label.name)
             count += 1
     return count
 
